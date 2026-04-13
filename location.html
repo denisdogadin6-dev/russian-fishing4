@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐟 Русская Рыбалка 4 — Водоём</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <aside class="sidebar">
+            <a href="index.html" class="back-link">← Назад ко всем водоёмам</a>
+            <h2 id="location-name">Название водоёма</h2>
+            <p id="location-description">Описание</p>
+            <div class="divider"></div>
+            <button id="add-spot-btn" class="add-btn">➕ Добавить точку клёва</button>
+            <div id="spot-stats" class="spot-stats"></div>
+        </aside>
+        <main class="content">
+            <h2>🐟 Точки клёва</h2>
+            <div id="spots-table-container">
+                <table id="spots-table">
+                    <thead>
+                        <tr>
+                            <th>Название точки</th>
+                            <th>Рыба</th>
+                            <th>Координаты</th>
+                            <th>Наживка</th>
+                            <th>Прикорм</th>
+                            <th>Вес трофея (кг)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="spots-tbody"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Модальное окно добавления точки -->
+    <div id="add-spot-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Добавить точку клёва</h3>
+            <form id="spot-form">
+                <label>Название точки:</label>
+                <input type="text" id="spot-name" required>
+
+                <label>Название рыбы:</label>
+                <input type="text" id="spot-fish" placeholder="Например: Окунь" required>
+
+                <label>Координаты (широта, долгота):</label>
+                <input type="text" id="spot-coords" placeholder="55.1234, 37.5678" required>
+
+                <label>Наживка:</label>
+                <input type="text" id="spot-bait" placeholder="Червь, опарыш" required>
+
+                <label>Прикорм:</label>
+                <input type="text" id="spot-groundbait" placeholder="Каша, кукуруза">
+
+                <label>Вес трофея (кг):</label>
+                <input type="number" step="0.01" id="spot-trophy" placeholder="2.5">
+
+                <button type="submit" class="submit-btn">💾 Сохранить</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
