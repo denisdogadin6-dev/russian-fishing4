@@ -1,3 +1,4 @@
+const IMGBB_API_KEY = 'fec0fd7fb91bb1eb6af66b97f53c4e72'; // Вставьте скопированный ключ между кавычек
 // ===================== НАСТРОЙКИ SHEETDB =====================
 const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/3pvy7m4t9ryo5';
 // ==============================================================
@@ -134,16 +135,21 @@ function renderSpotsTable() {
     }
     
     spots.forEach(spot => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${escapeHtml(spot.name)}</td>
-            <td>${escapeHtml(spot.fish)}</td>
-            <td>${escapeHtml(spot.coords)}</td>
-            <td>${escapeHtml(spot.bait)}</td>
-            <td>${escapeHtml(spot.groundbait || '—')}</td>
-            <td>${spot.trophy || '—'}</td>
-        `;
-        tbody.appendChild(row);
+       // Внутри цикла renderSpotsTable
+const row = document.createElement('tr');
+const imageHtml = spot.bait_image && spot.bait_image !== ''
+    ? `<a href="${spot.bait_image}" target="_blank"><img src="${spot.bait_image}" alt="Фото прикорма" style="max-width: 50px; max-height: 50px; border-radius: 4px;"></a>`
+    : '—';
+row.innerHTML = `
+    <td>${escapeHtml(spot.name)}</td>
+    <td>${escapeHtml(spot.fish)}</td>
+    <td>${escapeHtml(spot.coords)}</td>
+    <td>${escapeHtml(spot.bait)}</td>
+    <td>${escapeHtml(spot.groundbait || '—')}</td>
+    <td>${spot.trophy || '—'}</td>
+    <td>${imageHtml}</td>
+`;
+tbody.appendChild(row);
     });
 }
 
@@ -162,35 +168,59 @@ function setupAddSpotModal() {
     });
     
     form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const name = document.getElementById('spot-name').value.trim();
-        const fish = document.getElementById('spot-fish').value.trim();
-        const coords = document.getElementById('spot-coords').value.trim();
-        const bait = document.getElementById('spot-bait').value.trim();
-        const groundbait = document.getElementById('spot-groundbait').value.trim();
-        const trophy = document.getElementById('spot-trophy').value.trim();
-        
-        if (!name || !fish || !coords || !bait) {
-            alert('Заполните все обязательные поля');
-            return;
+    e.preventDefault();
+    const name = document.getElementById('spot-name').value.trim();
+    const fish = document.getElementById('spot-fish').value.trim();
+    const coords = document.getElementById('spot-coords').value.trim();
+    const bait = document.getElementById('spot-bait').value.trim();
+    const groundbait = document.getElementById('spot-groundbait').value.trim();
+    const trophy = document.getElementById('spot-trophy').value.trim();
+    const imageFile = document.getElementById('spot-image').files[0]; // Получаем файл
+
+    if (!name || !fish || !coords || !bait) {
+        alert('Заполните все обязательные поля');
+        return;
+    }
+
+    const submitBtn = form.querySelector('.submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Сохранение...';
+    let imageUrl = ''; // Здесь будет ссылка на фото
+
+    try {
+        // 1. Если файл выбран, загружаем его и получаем URL
+        if (imageFile) {
+            const previewDiv = document.getElementById('image-preview');
+            previewDiv.innerHTML = '⏳ Загрузка фото...';
+            imageUrl = await uploadImageToImgBB(imageFile);
+            previewDiv.innerHTML = '✅ Фото загружено!';
         }
-        
-        const submitBtn = form.querySelector('.submit-btn');
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Сохранение...';
-        
-        try {
-            await addSpotToSheetDB({
-                name: name,
-                fish: fish,
-                coords: coords,
-                bait: bait,
-                groundbait: groundbait || '',
-                trophy: trophy || '',
-                waterBodyId: currentLocationId,
-                createdAt: new Date().toISOString()
-            });
+
+        // 2. Отправляем ВСЕ данные (включая ссылку на фото) в Google Sheets
+        await addSpotToSheetDB({
+            name: name, fish: fish, coords: coords, bait: bait,
+            groundbait: groundbait || '', trophy: trophy || '',
+            waterBodyId: currentLocationId,
+            createdAt: new Date().toISOString(),
+            bait_image: imageUrl // Сохраняем ссылку на фото в таблицу
+        });
+
+        // 3. Обновляем таблицу на сайте и сбрасываем форму
+        await loadSpotsFromSheetDB();
+        renderSpotsTable();
+        updateSpotStats();
+        form.reset();
+        document.getElementById('image-preview').innerHTML = ''; // Очищаем статус
+        modal.classList.add('hidden');
+        alert('Точка успешно добавлена!');
+    } catch (err) {
+        console.error('Ошибка при добавлении:', err);
+        alert('Ошибка при добавлении: ' + err.message);
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '💾 Сохранить';
+    }
+});
             
             // Перезагружаем данные и обновляем таблицу
             await loadSpotsFromSheetDB();
@@ -235,3 +265,28 @@ document.addEventListener('DOMContentLoaded', () => {
         renderWaterBodyList();
     }
 });
+async function uploadImageToImgBB(file) {
+    const formData = new FormData();
+    formData.append('image', file); // ImgBB ожидает поле 'image'
+
+    try {
+        const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`Ошибка HTTP: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.success) {
+            return result.data.url; // Возвращаем прямую ссылку на изображение
+        } else {
+            throw new Error('Ошибка при загрузке изображения на ImgBB');
+        }
+    } catch (err) {
+        console.error('Ошибка загрузки на ImgBB:', err);
+        throw err;
+    }
+}
